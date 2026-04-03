@@ -288,8 +288,8 @@
 
 <div class="container">
   <div class="header">
-    <div class="label-tag">BARCODE ENGINE v1.0</div>
-    <h1>CODE <span>128</span></h1>
+    <div class="label-tag">BARCODE ENGINE v2.0</div>
+    <h1>CODE <span>128A</span></h1>
     <div class="subtitle">CLIPBOARD → BARCODE GENERATOR</div>
   </div>
 
@@ -301,8 +301,8 @@
 
     <div class="input-row">
       <input class="text-input" id="inputText" placeholder="вставьте текст или считайте буфер…" type="text" />
-      <button class="btn btn-primary" id="pasteBtn">⌘ БУФЕР</button>
-      <button class="btn btn-secondary" id="genBtn">ГЕНЕРИРОВАТЬ</button>
+      <button class="btn btn-primary" id="pasteBtn">⌘+V</button>
+      <button class="btn btn-secondary" id="genBtn">GEN</button>
     </div>
 
     <div class="barcode-area" id="barcodeArea">
@@ -345,30 +345,39 @@ const C128 = (() => {
     "112412","122114","122411","142112","142211","241211","221114","413111","241112","134111",
     "111242","121142","121241","114212","124112","124211","411212","421112","421211","212141",
     "214121","412121","111143","111341","131141","114113","114311","411113","411311","113141",
-    "114131","311141","411131","b1a4a2","211412","211214","211232","2331112"
+    "114131","311141","411131","211412","211214","211232","2331112"
   ];
 
-  const START_B = 104;
+  const START_A = 103;
   const STOP    = 106;
+
+  // Code 128A character set:
+  // Values 0–63  → ASCII 32–95  (space, !"#$%&'()*+,-./0-9:;<=>?@A-Z[\]^_)
+  // Values 64–95 → ASCII 0–31   (NUL, SOH, STX … US — control characters)
+  function charToA(ch) {
+    const c = ch.charCodeAt(0);
+    if (c >= 32 && c <= 95) return c - 32;       // printable + uppercase
+    if (c >= 0  && c <= 31) return c + 64;        // control characters
+    return null;
+  }
 
   function encode(text) {
     if (!text || text.length === 0) throw new Error("Пустая строка");
-    // Check all chars are in Code 128B range (32–126)
     for (let i = 0; i < text.length; i++) {
-      const c = text.charCodeAt(i);
-      if (c < 32 || c > 126) throw new Error(`Символ вне диапазона Code 128: "${text[i]}" (0x${c.toString(16)})`);
+      if (charToA(text[i]) === null)
+        throw new Error(`Символ вне диапазона Code 128A: "${text[i]}" (0x${text.charCodeAt(i).toString(16).toUpperCase()}) — допустимы ASCII 0–95`);
     }
 
     const codes = [];
-    codes.push(START_B); // Start B
+    codes.push(START_A);
 
-    let checksum = START_B;
+    let checksum = START_A;
     for (let i = 0; i < text.length; i++) {
-      const val = text.charCodeAt(i) - 32; // Code 128B: char 32 = value 0
+      const val = charToA(text[i]);
       codes.push(val);
       checksum += val * (i + 1);
     }
-    codes.push(checksum % 103); // Check symbol
+    codes.push(checksum % 103);
     codes.push(STOP);
 
     return codes;
